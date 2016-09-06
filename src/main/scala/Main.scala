@@ -2,6 +2,7 @@ import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
+import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
@@ -20,35 +21,58 @@ object Main {
     val parsedData = data.map(s => Vectors.dense(s.split('\t').map(_.toDouble))).cache()
     // Cluster the data into two classes using KMeans
 
-    val inputData = data.map(s => Vectors.dense(s.split('\t').dropRight(numberOfOutput).map(_.toDouble))).cache()
+
+    //read data from csv file just input
+    val inputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
     val numberOfInput = inputData.first().size
-    val outputData = data.map(s => Vectors.dense(s.split('\t').drop(numberOfInput).map(_.toDouble))).cache()
+
+    //read data from csv just
+
+    val outputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
 
     //inputData.foreach{println}
 
     //outputData.foreach{println}
     val summary: MultivariateStatisticalSummary = Statistics.colStats(inputData)
 
-    println(summary.max)
+    val inputDataABS = inputData.map(s => Vectors.dense(s.toArray.map(el => Math.abs(el))))
+
+   // inputDataABS.foreach{println}
+
+    val summaryABS: MultivariateStatisticalSummary = Statistics.colStats(inputDataABS)
+
+
+
+    //println("max:" + summary.max)
+    //println("min:" + summary.min)
+    //println("maxABS: " + summaryABS.max)
+    //println(summary.max)
+
+
+    //scaling(normalization) data
+    val inputDataNormal = inputData.map(s => Vectors.dense((s.toArray, summaryABS.max.toArray).zipped.map(_/_)))
+
+    //inputDataNormal.foreach(println)
+
 
     val mat: RowMatrix = new RowMatrix(parsedData)
 
 
     // Get its size.
-    val m = mat.numRows()
-    val n = mat.numCols()
+    //val m = mat.numRows()
+    //val n = mat.numCols()
 
 
     val numClusters = 2 // Value of K in Kmeans
-    val numIterations = 100
-    val clusters = KMeans.train(parsedData, numClusters, numIterations)
-    val cost = clusters.computeCost(parsedData)
+    val numIterations = 20
+    val clusters = KMeans.train(inputDataNormal, numClusters, numIterations)
+    val cost = clusters.computeCost(inputDataNormal)
     //  println("cost = " + cost)
 
     // println("PD:")
     //  parsedData.foreach{println}
 
-    val NamesandData = data.map(s => (s.split('\t')(0), Vectors.dense(s.split('\t').drop(1).map(_.toDouble)))).cache()
+//    val NamesandData = data.map(s => (s.split('\t')(0), Vectors.dense(s.split('\t').drop(1).map(_.toDouble)))).cache()
 
     //  println("ND:")
     //  NamesandData.foreach{println}
@@ -56,7 +80,16 @@ object Main {
     //
     // Print out a list of the clusters and each point of the clusters
     //val groupedClusters = NamesandData.groupBy{rdd => clusters.predict(rdd._2)}.collect()
-    val groupedClusters = parsedData.groupBy { rdd => clusters.predict(rdd) }.collect()
+    val groupedClusters = inputDataNormal.groupBy { rdd => clusters.predict(rdd) }.collect()
+
+    val inputDataWithClusterIndex = inputDataNormal.map(s => Vectors.dense(s.toArray :+ clusters.predict(s).toDouble))
+
+  val inputDataWithAdditionalColumn = inputDataWithClusterIndex.map(s => Vectors.dense(s.toArray :+ s.toArray(el =>)))
+
+
+
+    println(inputDataWithClusterIndex.getClass)
+    inputDataWithClusterIndex.foreach(println)
 
     // println(groupedClusters.length);
 

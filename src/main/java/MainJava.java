@@ -31,6 +31,7 @@ public class MainJava {
 
         JavaDoubleRDD rdd = jsc.parallelizeDoubles(testData);
 
+
         StatCounter statCounter = rdd.stats();
         LOGGER.info("Count:    " + statCounter.count());
         LOGGER.info("Min:      " + statCounter.min());
