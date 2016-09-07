@@ -2,6 +2,7 @@ import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
@@ -16,11 +17,12 @@ object Main {
     val conf = new SparkConf().setAppName("DiplomaSparkProject").setMaster("local")
     val sc = new SparkContext(conf)
 
-    val data = sc.textFile("D:\\procom_train.txt")
+    val trainData = sc.textFile("procom_train.txt")
+    val useData = sc.textFile("procom_use.txt")
+    val data = sc.textFile("procom_train.txt,procom_use.txt")
+    //val data = useData
     val parsedData = data.map(s => Vectors.dense(s.split('\t').map(_.toDouble))).cache()
-    // Cluster the data into two classes using KMeans
-
-
+    // Cluster the data into two classes using KMeans/
     //read data from csv file just input
     val inputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
     val numberOfInput = inputData.first().size
@@ -32,7 +34,7 @@ object Main {
     //inputData.foreach{println}
 
     //outputData.foreach{println}
-    val summary: MultivariateStatisticalSummary = Statistics.colStats(inputData)
+    //  val summary: MultivariateStatisticalSummary = Statistics.colStats(inputData)
 
     val inputDataABS = inputData.map(s => Vectors.dense(s.toArray.map(el => Math.abs(el))))
 
@@ -54,7 +56,7 @@ object Main {
     //inputDataNormal.foreach(println)
 
 
-    val mat: RowMatrix = new RowMatrix(parsedData)
+    //  val mat: RowMatrix = new RowMatrix(parsedData)
 
 
     // Get its size.
@@ -86,24 +88,32 @@ object Main {
 
 
 
+    val normalizationData = normalization(inputDataWithClusterIndex)
 
-
-
+//normalizationData.foreach(println)
+//    sc.
+//      parallelize(arrayToScalingNormalizaionVector(inputDataWithClusterIndex.map(s => magnitude(s.toArray)).collect())).foreach(println)
     // addColumnNoraml.foreach(println)
 
-    val inputDataWithAdditionalColumn = (inputDataWithClusterIndex zip sc.parallelize(arrayToNormalizaionArray(inputDataWithClusterIndex.map(s => magnitude(s.toArray)).collect()))).map(s => Vectors.dense(s._1.toArray ++ s._2.toArray))
 
-  //  inputDataWithAdditionalColumn.foreach(println)
+    val add = sc.
+      parallelize(arrayToScalingNormalizaionVector(inputDataWithClusterIndex.
+        map(s => magnitude(s.toArray)).collect()))
+
+    val inputDataWithAdditionalColumn = (normalizationData zip add.repartition(2)).
+      map(s => Vectors.dense(s._1.toArray ++ s._2.toArray))
 
 
-  //change it before add vector
-    val normalizationData = inputDataWithAdditionalColumn.map(s => Vectors.dense(s.toArray.map(el => el/magnitude(s.toArray))))
+    //  inputDataWithAdditionalColumn.foreach(println)
 
-    normalizationData.foreach(println)
 
-    //val normalizationSecondData = normalizationData.map(s => Vectors.dense(s))
+    //change it before add vector
+    inputDataWithAdditionalColumn.foreach(println)
 
-    println(normalizationData == inputDataWithAdditionalColumn)
+
+    val normalizationSecondStepData = normalization(inputDataWithAdditionalColumn)
+
+    //normalizationSecondStepData.foreach(println)
 
     // println(groupedClusters.length);
 
@@ -116,7 +126,11 @@ object Main {
     math.sqrt(x map (i => i * i) sum)
   }
 
-  def arrayToNormalizaionArray(x: Array[Double]): Array[Vector] = {
+  def arrayToScalingNormalizaionVector(x: Array[Double]): Array[Vector] = {
     x.map(el => Vectors.dense(el / x.max))
+  }
+
+  def normalization(rddVecors: RDD[Vector]): RDD[Vector] = {
+    rddVecors.map(s => Vectors.dense(s.toArray.map(el => el / magnitude(s.toArray))))
   }
 }
