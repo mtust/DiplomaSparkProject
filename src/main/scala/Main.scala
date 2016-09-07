@@ -1,8 +1,7 @@
 import org.apache.spark.mllib.clustering.KMeans
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
-import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
@@ -94,7 +93,17 @@ object Main {
 
     val inputDataWithAdditionalColumn = (inputDataWithClusterIndex zip sc.parallelize(arrayToNormalizaionArray(inputDataWithClusterIndex.map(s => magnitude(s.toArray)).collect()))).map(s => Vectors.dense(s._1.toArray ++ s._2.toArray))
 
-    inputDataWithAdditionalColumn.foreach(println)
+  //  inputDataWithAdditionalColumn.foreach(println)
+
+
+  //change it before add vector
+    val normalizationData = inputDataWithAdditionalColumn.map(s => Vectors.dense(s.toArray.map(el => el/magnitude(s.toArray))))
+
+    normalizationData.foreach(println)
+
+    //val normalizationSecondData = normalizationData.map(s => Vectors.dense(s))
+
+    println(normalizationData == inputDataWithAdditionalColumn)
 
     // println(groupedClusters.length);
 
