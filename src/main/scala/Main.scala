@@ -1,5 +1,5 @@
 import org.apache.spark.mllib.clustering.KMeans
-import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.mllib.util.MLUtils
@@ -37,7 +37,7 @@ object Main {
 
     val inputDataABS = inputData.map(s => Vectors.dense(s.toArray.map(el => Math.abs(el))))
 
-   // inputDataABS.foreach{println}
+    // inputDataABS.foreach{println}
 
     val summaryABS: MultivariateStatisticalSummary = Statistics.colStats(inputDataABS)
 
@@ -50,7 +50,7 @@ object Main {
 
 
     //scaling(normalization) data
-    val inputDataNormal = inputData.map(s => Vectors.dense((s.toArray, summaryABS.max.toArray).zipped.map(_/_)))
+    val inputDataNormal = inputData.map(s => Vectors.dense((s.toArray, summaryABS.max.toArray).zipped.map(_ / _)))
 
     //inputDataNormal.foreach(println)
 
@@ -72,7 +72,7 @@ object Main {
     // println("PD:")
     //  parsedData.foreach{println}
 
-//    val NamesandData = data.map(s => (s.split('\t')(0), Vectors.dense(s.split('\t').drop(1).map(_.toDouble)))).cache()
+    //    val NamesandData = data.map(s => (s.split('\t')(0), Vectors.dense(s.split('\t').drop(1).map(_.toDouble)))).cache()
 
     //  println("ND:")
     //  NamesandData.foreach{println}
@@ -82,19 +82,32 @@ object Main {
     //val groupedClusters = NamesandData.groupBy{rdd => clusters.predict(rdd._2)}.collect()
     val groupedClusters = inputDataNormal.groupBy { rdd => clusters.predict(rdd) }.collect()
 
+
     val inputDataWithClusterIndex = inputDataNormal.map(s => Vectors.dense(s.toArray :+ clusters.predict(s).toDouble))
 
-  val inputDataWithAdditionalColumn = inputDataWithClusterIndex.map(s => Vectors.dense(s.toArray :+ s.toArray(el =>)))
 
 
 
-    println(inputDataWithClusterIndex.getClass)
-    inputDataWithClusterIndex.foreach(println)
+
+
+    // addColumnNoraml.foreach(println)
+
+    val inputDataWithAdditionalColumn = (inputDataWithClusterIndex zip sc.parallelize(arrayToNormalizaionArray(inputDataWithClusterIndex.map(s => magnitude(s.toArray)).collect()))).map(s => Vectors.dense(s._1.toArray ++ s._2.toArray))
+
+    inputDataWithAdditionalColumn.foreach(println)
 
     // println(groupedClusters.length);
 
     // println(groupedClusters(0)._2);
     // groupedClusters.foreach { println}
 
+  }
+
+  def magnitude(x: Array[Double]): Double = {
+    math.sqrt(x map (i => i * i) sum)
+  }
+
+  def arrayToNormalizaionArray(x: Array[Double]): Array[Vector] = {
+    x.map(el => Vectors.dense(el / x.max))
   }
 }
