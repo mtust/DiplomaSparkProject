@@ -78,10 +78,9 @@ object Main {
     //  println("ND:")
     //  NamesandData.foreach{println}
 
-    //
-    // Print out a list of the clusters and each point of the clusters
-    //val groupedClusters = NamesandData.groupBy{rdd => clusters.predict(rdd._2)}.collect()
-    val groupedClusters = inputDataNormal.groupBy { rdd => clusters.predict(rdd) }.collect()
+
+
+    //val groupedClusters = inputDataNormal.groupBy { rdd => clusters.predict(rdd) }.collect()
 
 
     val inputDataWithClusterIndex = inputDataNormal.map(s => Vectors.dense(s.toArray :+ clusters.predict(s).toDouble))
@@ -90,30 +89,27 @@ object Main {
 
     val normalizationData = normalization(inputDataWithClusterIndex)
 
-//normalizationData.foreach(println)
-//    sc.
-//      parallelize(arrayToScalingNormalizaionVector(inputDataWithClusterIndex.map(s => magnitude(s.toArray)).collect())).foreach(println)
-    // addColumnNoraml.foreach(println)
 
 
-    val add = sc.
-      parallelize(arrayToScalingNormalizaionVector(inputDataWithClusterIndex.
-        map(s => magnitude(s.toArray)).collect()))
 
-    val inputDataWithAdditionalColumn = (normalizationData zip add.repartition(2)).
-      map(s => Vectors.dense(s._1.toArray ++ s._2.toArray))
+    val additionalColumn = arrayToScalingNormalizaionVector(inputDataWithClusterIndex.
+        map(s => magnitude(s.toArray)).collect())
+
+    //additionalColumn.foreach(println)
+
+    val inputDataWithAdditionalColumn = normalizationData.zipWithIndex().map(s => Vectors.dense(s._1.toArray :+ additionalColumn.apply(s._2.toInt)))
 
 
-    //  inputDataWithAdditionalColumn.foreach(println)
 
 
     //change it before add vector
-    inputDataWithAdditionalColumn.foreach(println)
+//    inputDataWithAdditionalColumn.foreach(println)
 
 
     val normalizationSecondStepData = normalization(inputDataWithAdditionalColumn)
 
-    //normalizationSecondStepData.foreach(println)
+
+    normalizationSecondStepData.foreach(println)
 
     // println(groupedClusters.length);
 
@@ -126,8 +122,8 @@ object Main {
     math.sqrt(x map (i => i * i) sum)
   }
 
-  def arrayToScalingNormalizaionVector(x: Array[Double]): Array[Vector] = {
-    x.map(el => Vectors.dense(el / x.max))
+  def arrayToScalingNormalizaionVector(x: Array[Double]): Array[Double] = {
+    x.map(el => el / x.max)
   }
 
   def normalization(rddVecors: RDD[Vector]): RDD[Vector] = {
