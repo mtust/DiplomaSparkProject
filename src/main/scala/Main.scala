@@ -1,4 +1,6 @@
-import org.apache.spark.mllib.clustering.KMeans
+import java.io._
+
+import org.apache.spark.mllib.clustering.{KMeans, StreamingKMeans}
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
@@ -17,15 +19,22 @@ object Main {
     val conf = new SparkConf().setAppName("DiplomaSparkProject").setMaster("local")
     val sc = new SparkContext(conf)
 
-    val trainData = sc.textFile("procom_train.txt")
-    val useData = sc.textFile("procom_use.txt")
-    val data = sc.textFile("procom_train.txt,procom_use.txt")
+    val dataUse = sc.textFile("procom_use.txt")
+    val dataTrain = sc.textFile("procom_train.txt")
     //val data = useData
-    val parsedData = data.map(s => Vectors.dense(s.split('\t').map(_.toDouble))).cache()
+    val parseDataUse = dataUse.map(s => Vectors.dense(s.split('\t').map(_.toDouble))).cache()
+    val parseDataTrain = dataTrain.map(s => Vectors.dense(s.split('\t').map(_.toDouble))).cache()
+    val parsedData = parseDataTrain.union(parseDataUse)
+    val inputDataTrain = parseDataTrain.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
+    val numberOfInput = inputDataTrain.first().size
+    val outputDataTrain = parseDataTrain.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
+    val inputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
+    val outputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
+
     // Cluster the data into two classes using KMeans/
     //read data from csv file just input
     val inputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
-    val numberOfInput = inputData.first().size
+
 
     //read data from csv just
 
@@ -53,6 +62,12 @@ object Main {
     //scaling(normalization) data
     val inputDataNormal = inputData.map(s => Vectors.dense((s.toArray, summaryABS.max.toArray).zipped.map(_ / _)))
 
+
+
+
+    //inputDataNormal.foreach(println)
+
+
     //inputDataNormal.foreach(println)
 
 
@@ -64,9 +79,17 @@ object Main {
     //val n = mat.numCols()
 
 
+    inputDataTrain.foreach(println)
+
     val numClusters = 2 // Value of K in Kmeans
     val numIterations = 20
-    val clusters = KMeans.train(inputDataNormal, numClusters, numIterations)
+    val clusters = KMeans.train(inputDataTrain, numClusters, numIterations)
+
+    println("predicted -----------------Train")
+    clusters.predict(inputDataTrain).foreach(println)
+    println("predicted -----------------Normal")
+    clusters.predict(inputDataNormal).foreach(println)
+
     val cost = clusters.computeCost(inputDataNormal)
     //  println("cost = " + cost)
 
@@ -77,7 +100,6 @@ object Main {
 
     //  println("ND:")
     //  NamesandData.foreach{println}
-
 
 
     //val groupedClusters = inputDataNormal.groupBy { rdd => clusters.predict(rdd) }.collect()
@@ -93,7 +115,7 @@ object Main {
 
 
     val additionalColumn = arrayToScalingNormalizaionVector(inputDataWithClusterIndex.
-        map(s => magnitude(s.toArray)).collect())
+      map(s => magnitude(s.toArray)).collect())
 
     //additionalColumn.foreach(println)
 
@@ -103,13 +125,15 @@ object Main {
 
 
     //change it before add vector
-//    inputDataWithAdditionalColumn.foreach(println)
+    //    inputDataWithAdditionalColumn.foreach(println)
 
 
     val normalizationSecondStepData = normalization(inputDataWithAdditionalColumn)
 
 
-    normalizationSecondStepData.foreach(println)
+
+
+
 
     // println(groupedClusters.length);
 
@@ -129,4 +153,7 @@ object Main {
   def normalization(rddVecors: RDD[Vector]): RDD[Vector] = {
     rddVecors.map(s => Vectors.dense(s.toArray.map(el => el / magnitude(s.toArray))))
   }
+
+
+
 }
