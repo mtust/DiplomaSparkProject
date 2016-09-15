@@ -19,11 +19,17 @@ object Main {
     val conf = new SparkConf().setAppName("DiplomaSparkProject").setMaster("local")
     val sc = new SparkContext(conf)
 
-    val dataUse = sc.textFile("procom_use.txt")
-    val dataTrain = sc.textFile("procom_train.txt")
+    val dataUseWithHeader = sc.textFile("sample_test.csv")
+   val  headerUse = dataUseWithHeader.first()
+    val dataUse = dataUseWithHeader.filter(row => row != headerUse)
+    val dataTrainWithHeader = sc.textFile("sample_train.csv")
+    val  headerTrain = dataUseWithHeader.first()
+    val dataTrain = dataUseWithHeader.filter(row => row != headerTrain)
+
+
     //val data = useData
-    val parseDataUse = dataUse.map(s => Vectors.dense(s.split('\t').map(_.toDouble))).cache()
-    val parseDataTrain = dataTrain.map(s => Vectors.dense(s.split('\t').map(_.toDouble))).cache()
+    val parseDataUse = dataUse.map(s => Vectors.dense(s.split(',').map(_.toDouble))).cache()
+    val parseDataTrain = dataTrain.map(s => Vectors.dense(s.split(',').map(_.toDouble))).cache()
     val parsedData = parseDataTrain.union(parseDataUse)
     val inputDataTrain = parseDataTrain.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
     val numberOfInput = inputDataTrain.first().size
@@ -88,7 +94,7 @@ object Main {
     println("predicted -----------------Train")
     clusters.predict(inputDataTrain).foreach(println)
     println("predicted -----------------Normal")
-    clusters.predict(inputDataNormal).foreach(println)
+    clusters.predict(inputDataUse).foreach(println)
 
     val cost = clusters.computeCost(inputDataNormal)
     //  println("cost = " + cost)
