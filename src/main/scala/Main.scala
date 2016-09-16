@@ -21,7 +21,7 @@ object Main {
     val dataUseWithHeader = sc.textFile("sample_test.csv")
    val  headerUse = dataUseWithHeader.first()
     val dataUse = dataUseWithHeader.filter(row => row != headerUse)
-    val dataTrainWithHeader = sc.textFile("sample_train.csv")
+    val dataTrainWithHeader = sc.textFile("my_sample_train.csv")
     val  headerTrain = dataTrainWithHeader.first()
     val dataTrain = dataTrainWithHeader.filter(row => row != headerTrain)
 
@@ -143,6 +143,8 @@ object Main {
 
     println(normalizationSecondStepData.count())
 
+
+    normalizationSecondStepData.foreach(println)
 
 
 
