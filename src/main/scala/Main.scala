@@ -14,9 +14,8 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-
     val numberOfOutput = 1
-    val conf = new SparkConf().setAppName("DiplomaSparkProject").setMaster("local")
+    val conf = new SparkConf().setAppName("DiplomaSparkProject").setMaster("local").set("spark.executor.memory", "2g")
     val sc = new SparkContext(conf)
 
     val dataUseWithHeader = sc.textFile("sample_test.csv")
@@ -24,7 +23,7 @@ object Main {
     val dataUse = dataUseWithHeader.filter(row => row != headerUse)
     val dataTrainWithHeader = sc.textFile("sample_train.csv")
     val  headerTrain = dataTrainWithHeader.first()
-    val dataTrain = dataUseWithHeader.filter(row => row != headerTrain)
+    val dataTrain = dataTrainWithHeader.filter(row => row != headerTrain)
 
 
     //val data = useData
@@ -39,6 +38,9 @@ object Main {
     val outputDataTrain = parseDataTrain.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
     val inputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
     val outputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
+
+    println(inputDataTrain.count())
+    println(inputDataUse.count())
 
     // Cluster the data into two classes using KMeans/
     //read data from csv file just input
@@ -90,7 +92,7 @@ object Main {
     //val m = mat.numRows()
     //val n = mat.numCols()
 
-    
+
 
     val numClusters = 2 // Value of K in Kmeans
     val numIterations = 20
@@ -117,7 +119,6 @@ object Main {
     val inputDataWithClusterIndex = inputData.map(s => Vectors.dense(s.toArray :+ clusters.predict(s).toDouble))
 
 
-    inputDataWithClusterIndex.foreach(println)
 
     val normalizationData = normalization(inputDataWithClusterIndex)
 //
@@ -140,7 +141,7 @@ object Main {
 //
     val normalizationSecondStepData = normalization(inputDataWithAdditionalColumn)
 
-    normalizationSecondStepData.foreach(println)
+    println(normalizationSecondStepData.count())
 
 
 
