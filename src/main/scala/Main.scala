@@ -1,7 +1,4 @@
-import java.io._
-
-import org.apache.spark.mllib.clustering.{KMeans, StreamingKMeans}
-import org.apache.spark.mllib.linalg.distributed.RowMatrix
+import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.rdd.RDD
@@ -41,6 +38,7 @@ object Main {
 
     println(inputDataTrain.count())
     println(inputDataUse.count())
+
 
     // Cluster the data into two classes using KMeans/
     //read data from csv file just input
@@ -101,6 +99,7 @@ object Main {
 
     val inputData = inputDataTrainNormal.union(inputDataUseNormal)
 
+
     //val cost = clusters.computeCost(inputDataTrainNormal)
     //  println("cost = " + cost)
 
@@ -116,8 +115,11 @@ object Main {
     //val groupedClusters = inputDataNormal.groupBy { rdd => clusters.predict(rdd) }.collect()
 
 
+//    inputData.foreach(println)
+
     val inputDataWithClusterIndex = inputData.map(s => Vectors.dense(s.toArray :+ clusters.predict(s).toDouble))
 
+    //inputDataWithClusterIndex.foreach(println)
 
 
     val normalizationData = normalization(inputDataWithClusterIndex)
@@ -128,7 +130,7 @@ object Main {
     val additionalColumn = arrayToScalingNormalizaionVector(inputDataWithClusterIndex.
       map(s => magnitude(s.toArray)).collect())
 //
-//    //additionalColumn.foreach(println)
+    //additionalColumn.foreach(println)
 //
     val inputDataWithAdditionalColumn = normalizationData.zipWithIndex().map(s => Vectors.dense(s._1.toArray :+ additionalColumn.apply(s._2.toInt)))
 //
@@ -141,10 +143,14 @@ object Main {
 //
     val normalizationSecondStepData = normalization(inputDataWithAdditionalColumn)
 
-    println(normalizationSecondStepData.count())
+    val normalizationSecondStepDataTrain  = normalizationSecondStepData.__leftOfArrow;
+    println("idt:" + inputDataTrain.count())
+    println("nssd:" + normalizationSecondStepData.count())
+    println("nssdt:" + normalizationSecondStepDataTrain.count())
+    val inptDataTrainWithR = normalizationSecondStepDataTrain.map(s => Vectors.dense(s.toArray :+ 1.toDouble ))
 
 
-    normalizationSecondStepData.foreach(println)
+ //   normalizationSecondStepData.foreach(println)
 
 
 
