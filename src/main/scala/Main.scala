@@ -1,3 +1,5 @@
+import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
+
 import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
@@ -143,12 +145,32 @@ object Main {
 //
     val normalizationSecondStepData = normalization(inputDataWithAdditionalColumn)
 
-    val normalizationSecondStepDataTrain  = normalizationSecondStepData.__leftOfArrow;
-    println("idt:" + inputDataTrain.count())
-    println("nssd:" + normalizationSecondStepData.count())
-    println("nssdt:" + normalizationSecondStepDataTrain.count())
-    val inptDataTrainWithR = normalizationSecondStepDataTrain.map(s => Vectors.dense(s.toArray :+ 1.toDouble ))
+    val k: Integer = 2
+    val n = normalizationSecondStepData.partitions.size
+    val rdds = (0 until n) // Create Seq of partitions numbers
+      .grouped(n / k)  // group it into fixed sized buckets
+      .map(idxs => (idxs.head, idxs.last)) // Take the first and the last idx
+      .map {
+      case(min, max) => normalizationSecondStepData.mapPartitionsWithIndex(
+        // If partition in [min, max] range keep its iterator
+        // otherwise return empty-one
+        (i, iter) => if (i >= min & i <= max) iter else Iterator()
+      )
+    }
+    val normalizationSecondStepDataTrain  = rdds.next()
+    val normalizationSecondStepDataUse = rdds.next()
+    val inputDataTrainWithR = normalizationSecondStepDataTrain.map(s => Vectors.dense(s.toArray :+ 1.toDouble ))
 
+
+    val Array(inputDataTrainWithR1, inputDataTrainWithR2) = inputDataTrainWithR.randomSplit(Array(0.5, 0.5))
+
+
+//    writeInFile(inputDataTrainWithR1, "trainClass1.txt")
+//    writeInFile(inputDataTrainWithR2, "trainClass2.txt")
+//    writeInFile(normalizationSecondStepDataUse, "use.txt")
+      inputDataTrainWithR1.saveAsTextFile("trainClass1")
+    inputDataTrainWithR2.saveAsTextFile("trainClass2")
+    normalizationSecondStepDataUse.saveAsTextFile("use")
 
  //   normalizationSecondStepData.foreach(println)
 
@@ -173,6 +195,13 @@ object Main {
 
   def normalization(rddVecors: RDD[Vector]): RDD[Vector] = {
     rddVecors.map(s => Vectors.dense(s.toArray.map(el => el / magnitude(s.toArray))))
+  }
+
+  def writeInFile(rddVectors: RDD[Vector], fileName: String): Unit = {
+    val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName)))
+    rddVectors.foreach{
+      vector => vector.toArray.foreach(el => writer.write(el.toString + "\t"))}
+    writer.write("\n")
   }
 
 
