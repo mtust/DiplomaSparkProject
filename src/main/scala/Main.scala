@@ -165,9 +165,6 @@ object Main {
     val Array(inputDataTrainWithR1, inputDataTrainWithR2) = inputDataTrainWithR.randomSplit(Array(0.5, 0.5))
 
 
-//    writeInFile(inputDataTrainWithR1, "trainClass1.txt")
-//    writeInFile(inputDataTrainWithR2, "trainClass2.txt")
-//    writeInFile(normalizationSecondStepDataUse, "use.txt")
       inputDataTrainWithR1.saveAsTextFile("trainClass1")
     inputDataTrainWithR2.saveAsTextFile("trainClass2")
     normalizationSecondStepDataUse.saveAsTextFile("use")
@@ -197,12 +194,6 @@ object Main {
     rddVecors.map(s => Vectors.dense(s.toArray.map(el => el / magnitude(s.toArray))))
   }
 
-  def writeInFile(rddVectors: RDD[Vector], fileName: String): Unit = {
-    val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName)))
-    rddVectors.foreach{
-      vector => vector.toArray.foreach(el => writer.write(el.toString + "\t"))}
-    writer.write("\n")
-  }
 
 
 
