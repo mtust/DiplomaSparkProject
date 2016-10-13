@@ -18,10 +18,10 @@ object Main {
     val sc = new SparkContext(conf)
 
     val dataUseWithHeader = sc.textFile("sample_test.csv")
-   val  headerUse = dataUseWithHeader.first()
+    val headerUse = dataUseWithHeader.first()
     val dataUse = dataUseWithHeader.filter(row => row != headerUse)
     val dataTrainWithHeader = sc.textFile("my_sample_train.csv")
-    val  headerTrain = dataTrainWithHeader.first()
+    val headerTrain = dataTrainWithHeader.first()
     val dataTrain = dataTrainWithHeader.filter(row => row != headerTrain)
 
 
@@ -29,27 +29,27 @@ object Main {
     val parseDataUse = dataUse.map(s => Vectors.dense(s.split(',').map(_.toDouble))).cache()
     val parseDataTrain = dataTrain.map(s => Vectors.dense(s.split(',').map(_.toDouble))).cache()
 
-   // val parsedData = parseDataTrain.union(parseDataUse)
+    // val parsedData = parseDataTrain.union(parseDataUse)
 
 
     val inputDataTrain = parseDataTrain.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
     val numberOfInput = inputDataTrain.first().size
-    val outputDataTrain = parseDataTrain.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
+    val outputDataTrain = parseDataTrain.map(s => Vectors.dense(s.toArray.drop(numberOfInput))).cache()
     val inputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
-    val outputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
+    val outputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.drop(numberOfInput))).cache()
 
-    println(inputDataTrain.count())
-    println(inputDataUse.count())
+    outputDataTrain.foreach(println)
+    inputDataTrain.foreach(println)
 
 
     // Cluster the data into two classes using KMeans/
     //read data from csv file just input
-  //  val inputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
+    //  val inputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
 
 
     //read data from csv just
 
-  //  val outputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
+    //  val outputData = parsedData.map(s => Vectors.dense(s.toArray.dropRight(numberOfInput))).cache()
 
 
     //outputData.foreach{println}
@@ -93,7 +93,6 @@ object Main {
     //val n = mat.numCols()
 
 
-
     val numClusters = 2 // Value of K in Kmeans
     val numIterations = 20
     val clusters = KMeans.train(inputDataTrainNormal, numClusters, numIterations)
@@ -117,7 +116,7 @@ object Main {
     //val groupedClusters = inputDataNormal.groupBy { rdd => clusters.predict(rdd) }.collect()
 
 
-//    inputData.foreach(println)
+    //    inputData.foreach(println)
 
     val inputDataWithClusterIndex = inputData.map(s => Vectors.dense(s.toArray :+ clusters.predict(s).toDouble))
 
@@ -125,54 +124,70 @@ object Main {
 
 
     val normalizationData = normalization(inputDataWithClusterIndex)
-//
-//
-//
-//
+    //
+    //
+    //
+    //
     val additionalColumn = arrayToScalingNormalizaionVector(inputDataWithClusterIndex.
       map(s => magnitude(s.toArray)).collect())
-//
+    //
     //additionalColumn.foreach(println)
-//
+    //
     val inputDataWithAdditionalColumn = normalizationData.zipWithIndex().map(s => Vectors.dense(s._1.toArray :+ additionalColumn.apply(s._2.toInt)))
-//
-//
-//
-//
-//    //change it before add vector
-//    //    inputDataWithAdditionalColumn.foreach(println)
-//
-//
+    //
+    //
+    //
+    //
+    //    //change it before add vector
+    //    //    inputDataWithAdditionalColumn.foreach(println)
+    //
+    //
     val normalizationSecondStepData = normalization(inputDataWithAdditionalColumn)
 
     val k: Integer = 2
     val n = normalizationSecondStepData.partitions.size
     val rdds = (0 until n) // Create Seq of partitions numbers
-      .grouped(n / k)  // group it into fixed sized buckets
+      .grouped(n / k) // group it into fixed sized buckets
       .map(idxs => (idxs.head, idxs.last)) // Take the first and the last idx
       .map {
-      case(min, max) => normalizationSecondStepData.mapPartitionsWithIndex(
+      case (min, max) => normalizationSecondStepData.mapPartitionsWithIndex(
         // If partition in [min, max] range keep its iterator
         // otherwise return empty-one
         (i, iter) => if (i >= min & i <= max) iter else Iterator()
       )
     }
-    val normalizationSecondStepDataTrain  = rdds.next()
+    val normalizationSecondStepDataTrain = rdds.next()
     val normalizationSecondStepDataUse = rdds.next()
-    val inputDataTrainWithR = normalizationSecondStepDataTrain.map(s => Vectors.dense(s.toArray :+ 1.toDouble ))
+    val inputDataTrainWithR = normalizationSecondStepDataTrain.map(s => Vectors.dense(s.toArray :+ 1.toDouble))
+
+    //var inputDataTrainWithR1 = sc.emptyRDD[Vector];
+    var inputDataTrainWithR1 = Array.empty[Vector]
+    var inputDataTrainWithR2 = Array.empty[Vector]
+    var idtwrArray = inputDataTrainWithR.collect()
+    var oudArray = outputDataTrain.collect()
+    for (i <- 0 to outputDataTrain.count().toInt - 1) {
+      val outElement = oudArray.apply(i).toArray.apply(0)
+      println(idtwrArray.apply(i))
+      if (outElement > 0.5) {
+        inputDataTrainWithR1 :+ idtwrArray.apply(i)
+      } else if (outElement <= 0.5) {
+        inputDataTrainWithR2 :+ idtwrArray.apply(i)
+      }
+      inputDataTrainWithR1.foreach(println)
+      inputDataTrainWithR2.foreach(println)
+    }
 
 
-    val Array(inputDataTrainWithR1, inputDataTrainWithR2) = inputDataTrainWithR.randomSplit(Array(0.5, 0.5))
+    //    val Array(inputDataTrainWithR1, inputDataTrainWithR2) = inputDataTrainWithR.randomSplit(Array(0.5, 0.5))
 
 
-      inputDataTrainWithR1.saveAsTextFile("trainClass1")
-    inputDataTrainWithR2.saveAsTextFile("trainClass2")
+//    writeArrayInFile(inputDataTrainWithR1, "trainClass1")
+//    writeArrayInFile(inputDataTrainWithR2, "trainClass2")
+//    sc.parallelize(inputDataTrainWithR1).saveAsTextFile("trainClass1")
+//    sc.parallelize(inputDataTrainWithR2).saveAsTextFile("trainClass2")
     normalizationSecondStepDataUse.saveAsTextFile("use")
 
- //   normalizationSecondStepData.foreach(println)
-
-
-
+    //   normalizationSecondStepData.foreach(println)
 
 
     // println(groupedClusters.length);
@@ -192,9 +207,19 @@ object Main {
 
   def normalization(rddVecors: RDD[Vector]): RDD[Vector] = {
     rddVecors.map(s => Vectors.dense(s.toArray.map(el => el / magnitude(s.toArray))))
+
   }
-
-
+    def writeArrayInFile(data: Array[Vector], fileName: String) = {
+      val file = fileName
+      val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)))
+      for (x <- data) {
+        for(el <- x.toArray) {
+          writer.write(el + "\t")
+        }
+        writer.write("\n") // however you want to format it
+      }
+      writer.close()
+    }
 
 
 }
