@@ -1,10 +1,11 @@
-import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
-
+import org.apache.spark.ml.classification.MultilayerPerceptronClassifier
 import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkConf, SparkContext, TaskContext}
+import org.apache.spark.sql.{SQLContext, SparkSession}
+import org.apache.spark.{SparkConf, SparkContext}
 
 /**
   * Created by tust on 02.09.2016.
@@ -179,9 +180,30 @@ object Main {
 
 
 
-    inputDataTrainWithR1.saveAsTextFile("trainClass1")
-    inputDataTrainWithR2.saveAsTextFile("trainClass2")
-    normalizationSecondStepDataUse.saveAsTextFile("use")
+//    inputDataTrainWithR1.saveAsTextFile("trainClass1")
+//    inputDataTrainWithR2.saveAsTextFile("trainClass2")
+//    normalizationSecondStepDataUse.saveAsTextFile("use")
+
+    val layers = Array[Int](4, 5, 4, 3)
+    val trainer = new MultilayerPerceptronClassifier()
+      .setLayers(layers)
+      .setBlockSize(128)
+      .setSeed(1234L)
+      .setMaxIter(100)
+
+
+    val sparkSession = SparkSession.builder().getOrCreate()
+
+    val model1 = trainer.fit(sparkSession.createDataset(inputDataTrainWithR1))
+    val model2 = trainer.fit(sparkSession.createDataset(inputDataTrainWithR2))
+    val useDataSet = sparkSession.createDataset(normalizationSecondStepDataUse)
+    val result1 = model1.transform(useDataSet)
+    val result2 = model2.transform(useDataSet)
+
+    println("result1")
+    println(result1)
+    println("result2")
+    println(result2)
 
     //   normalizationSecondStepData.foreach(println)
 
