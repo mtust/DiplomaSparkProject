@@ -4,7 +4,7 @@ import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{SparkConf, SparkContext, TaskContext}
 
 /**
   * Created by tust on 02.09.2016.
@@ -18,9 +18,11 @@ object Main {
     val sc = new SparkContext(conf)
 
     val dataUseWithHeader = sc.textFile("sample_test.csv")
+//    val dataUseWithHeader = sc.textFile("procom_use.txt")
     val headerUse = dataUseWithHeader.first()
     val dataUse = dataUseWithHeader.filter(row => row != headerUse)
     val dataTrainWithHeader = sc.textFile("my_sample_train.csv")
+//    val dataTrainWithHeader = sc.textFile("procom_train.txt")
     val headerTrain = dataTrainWithHeader.first()
     val dataTrain = dataTrainWithHeader.filter(row => row != headerTrain)
 
@@ -38,8 +40,8 @@ object Main {
     val inputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.dropRight(numberOfOutput))).cache()
     val outputDataUse = parseDataUse.map(s => Vectors.dense(s.toArray.drop(numberOfInput))).cache()
 
-    outputDataTrain.foreach(println)
-    inputDataTrain.foreach(println)
+
+
 
 
     // Cluster the data into two classes using KMeans/
@@ -156,35 +158,29 @@ object Main {
         (i, iter) => if (i >= min & i <= max) iter else Iterator()
       )
     }
+
     val normalizationSecondStepDataTrain = rdds.next()
     val normalizationSecondStepDataUse = rdds.next()
     val inputDataTrainWithR = normalizationSecondStepDataTrain.map(s => Vectors.dense(s.toArray :+ 1.toDouble))
 
-    //var inputDataTrainWithR1 = sc.emptyRDD[Vector];
-    var inputDataTrainWithR1 = Array.empty[Vector]
-    var inputDataTrainWithR2 = Array.empty[Vector]
-    var idtwrArray = inputDataTrainWithR.collect()
-    var oudArray = outputDataTrain.collect()
-    for (i <- 0 to outputDataTrain.count().toInt - 1) {
-      val outElement = oudArray.apply(i).toArray.apply(0)
-      println(idtwrArray.apply(i))
-      if (outElement > 0.5) {
-        inputDataTrainWithR1 :+ idtwrArray.apply(i)
-      } else if (outElement <= 0.5) {
-        inputDataTrainWithR2 :+ idtwrArray.apply(i)
-      }
-      inputDataTrainWithR1.foreach(println)
-      inputDataTrainWithR2.foreach(println)
-    }
 
 
-    //    val Array(inputDataTrainWithR1, inputDataTrainWithR2) = inputDataTrainWithR.randomSplit(Array(0.5, 0.5))
 
 
-//    writeArrayInFile(inputDataTrainWithR1, "trainClass1")
-//    writeArrayInFile(inputDataTrainWithR2, "trainClass2")
-//    sc.parallelize(inputDataTrainWithR1).saveAsTextFile("trainClass1")
-//    sc.parallelize(inputDataTrainWithR2).saveAsTextFile("trainClass2")
+      val inputDataTrainWithRRepatoined = inputDataTrainWithR.repartition(1);
+
+
+
+//
+////
+     val inputDataTrainWithR1  = inputDataTrainWithRRepatoined.zip(outputDataTrain).filter{case (x, y) => moreThanHalf(x, y)}.map(_._1)
+      val inputDataTrainWithR2  = inputDataTrainWithRRepatoined.zip(outputDataTrain).filter{case (x, y) => lessThanHalf(x, y)}.map(_._1)
+
+
+
+
+    inputDataTrainWithR1.saveAsTextFile("trainClass1")
+    inputDataTrainWithR2.saveAsTextFile("trainClass2")
     normalizationSecondStepDataUse.saveAsTextFile("use")
 
     //   normalizationSecondStepData.foreach(println)
@@ -209,17 +205,12 @@ object Main {
     rddVecors.map(s => Vectors.dense(s.toArray.map(el => el / magnitude(s.toArray))))
 
   }
-    def writeArrayInFile(data: Array[Vector], fileName: String) = {
-      val file = fileName
-      val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)))
-      for (x <- data) {
-        for(el <- x.toArray) {
-          writer.write(el + "\t")
-        }
-        writer.write("\n") // however you want to format it
-      }
-      writer.close()
-    }
+  def lessThanHalf(x : Vector, y : Vector): Boolean = {
+    y.apply(0) < 0.5;
+  }
+  def moreThanHalf(x : Vector, y : Vector): Boolean = {
+    y.apply(0) >= 0.5;
+  }
 
 
 }
