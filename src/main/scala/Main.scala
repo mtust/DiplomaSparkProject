@@ -1,10 +1,13 @@
+
 import org.apache.spark.ml.classification.MultilayerPerceptronClassifier
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+import org.apache.spark.mllib.classification.{NaiveBayes}
 import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{SQLContext, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
@@ -19,11 +22,11 @@ object Main {
     val sc = new SparkContext(conf)
 
     val dataUseWithHeader = sc.textFile("sample_test.csv")
-//    val dataUseWithHeader = sc.textFile("procom_use.txt")
+    //    val dataUseWithHeader = sc.textFile("procom_use.txt")
     val headerUse = dataUseWithHeader.first()
     val dataUse = dataUseWithHeader.filter(row => row != headerUse)
     val dataTrainWithHeader = sc.textFile("my_sample_train.csv")
-//    val dataTrainWithHeader = sc.textFile("procom_train.txt")
+    //    val dataTrainWithHeader = sc.textFile("procom_train.txt")
     val headerTrain = dataTrainWithHeader.first()
     val dataTrain = dataTrainWithHeader.filter(row => row != headerTrain)
 
@@ -162,50 +165,88 @@ object Main {
 
     val normalizationSecondStepDataTrain = rdds.next()
     val normalizationSecondStepDataUse = rdds.next()
-    val inputDataTrainWithR = normalizationSecondStepDataTrain.map(s => Vectors.dense(s.toArray :+ 1.toDouble))
 
 
 
 
 
-      val inputDataTrainWithRRepatoined = inputDataTrainWithR.repartition(1);
+
+    val trainDataWithOutput = normalizationSecondStepDataTrain.repartition(1).zip(outputDataTrain)
+    //
+    ////
+
+    val inputDataTrainWithR1 = trainDataWithOutput.filter { case (x, y) => moreThanHalf(x, y) }
+      .map(_._1).map(s => Vectors.dense(s.toArray :+ 1.toDouble))
+    val inputDataTrainWithR2 = trainDataWithOutput.filter { case (x, y) => lessThanHalf(x, y) }
+      .map(_._1).map(s => Vectors.dense(s.toArray :+ 0.toDouble)).repartition(1)
+
+    val inputDataTrainWithR1R = inputDataTrainWithR1.repartition(1)
+    val inputDataTrainWithR2R = inputDataTrainWithR2.repartition(1)
+
+
+    val testFromUse = normalizationSecondStepDataUse.repartition(1).zip(outputDataUse)
+      .map{case (input, output) => Vectors.dense(input.toArray ++ output.toArray)}
+//        inputDataTrainWithR1R.saveAsTextFile("trainClass1")
+//        inputDataTrainWithR2R.saveAsTextFile("trainClass2")
+    //    normalizationSecondStepDataUse.saveAsTextFile("use")
+
+//    testFromUse.saveAsTextFile("test")
 
 
 
-//
-////
-     val inputDataTrainWithR1  = inputDataTrainWithRRepatoined.zip(outputDataTrain).filter{case (x, y) => moreThanHalf(x, y)}.map(_._1)
-      val inputDataTrainWithR2  = inputDataTrainWithRRepatoined.zip(outputDataTrain).filter{case (x, y) => lessThanHalf(x, y)}.map(_._1)
 
 
+//    val parseDataInputDataTrainWithR1R = inputDataTrainWithR1.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
+//    val parseDataNormalizationSecondStepDataUse = normalizationSecondStepDataUse.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
 
-
-//    inputDataTrainWithR1.saveAsTextFile("trainClass1")
-//    inputDataTrainWithR2.saveAsTextFile("trainClass2")
-//    normalizationSecondStepDataUse.saveAsTextFile("use")
-
-    val layers = Array[Int](4, 5, 4, 3)
-    val trainer = new MultilayerPerceptronClassifier()
-      .setLayers(layers)
-      .setBlockSize(128)
-      .setSeed(1234L)
-      .setMaxIter(100)
-
-
-    val sparkSession = SparkSession.builder().getOrCreate()
-
-    val model1 = trainer.fit(sparkSession.createDataset(inputDataTrainWithR1))
-    val model2 = trainer.fit(sparkSession.createDataset(inputDataTrainWithR2))
-    val useDataSet = sparkSession.createDataset(normalizationSecondStepDataUse)
-    val result1 = model1.transform(useDataSet)
-    val result2 = model2.transform(useDataSet)
-
-    println("result1")
-    println(result1)
-    println("result2")
-    println(result2)
+    val tdr = trainDataWithOutput.map{ case (input, output) => Vectors.dense(input.toArray ++ output.toArray)}
+    val parseDataTrainWithOutput = tdr
+      .zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
+    val parseDataTestFromUse = testFromUse.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
+//    val sparkSession =  SparkSession.builder().getOrCreate()
+//    val dataset = sparkSession.createDataset(parseData)
 
     //   normalizationSecondStepData.foreach(println)
+
+//    val model = NaiveBayes.train(parseDataTrainWithOutput, lambda = 1.0, modelType = "multinomial")
+//    val predictionAndLabel = parseDataTestFromUse.map(p => (model.predict(p.features), p.label))
+//    val accuracy = 1.0 * predictionAndLabel.filter(x => x._1 == x._2).count() / parseDataTestFromUse.count()
+//
+//
+//    print(accuracy)
+
+
+
+//    val spark = SparkSession
+//      .builder()
+//      .getOrCreate()
+//
+//    import spark.implicits._
+//
+//    // Apply the schema to the RDD
+//    val df = spark.sparkContext.textFile("test/part-00000").map(_.split(","))
+//      .toDF()
+//
+//    df.show()
+
+//    val layers = Array[Int](4, 5, 4, 3)
+//    // create the trainer and set its parameters
+//    val trainer = new MultilayerPerceptronClassifier()
+//      .setLayers(layers)
+//      .setBlockSize(128)
+//      .setSeed(1234L)
+//      .setMaxIter(100)
+//    // train the model
+//    val model = trainer.fit(df)
+//    // compute precision on the test set
+//    val result = model.transform(df)
+//    val predictionAndLabels = result.select("prediction", "label")
+//    val evaluator = new MulticlassClassificationEvaluator()
+//      .setMetricName("precision")
+//    println("Precision:" + evaluator.evaluate(predictionAndLabels))
+
+
+    // Save and load model
 
 
     // println(groupedClusters.length);
@@ -227,12 +268,16 @@ object Main {
     rddVecors.map(s => Vectors.dense(s.toArray.map(el => el / magnitude(s.toArray))))
 
   }
-  def lessThanHalf(x : Vector, y : Vector): Boolean = {
+
+  def lessThanHalf(x: Vector, y: Vector): Boolean = {
     y.apply(0) < 0.5;
   }
-  def moreThanHalf(x : Vector, y : Vector): Boolean = {
+
+  def moreThanHalf(x: Vector, y: Vector): Boolean = {
     y.apply(0) >= 0.5;
   }
+
+
 
 
 }

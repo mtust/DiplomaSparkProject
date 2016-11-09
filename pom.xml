@@ -40,6 +40,13 @@
     </pluginRepositories>
 
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spark.version>2.0.0</spark.version>
+    </properties>
+
+
+
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>
@@ -50,12 +57,12 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.10</artifactId>
-            <version>2.0.0</version>
+            <version>${spark.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_2.10</artifactId>
-            <version>2.0.0</version>
+            <version>${spark.version}</version>
         </dependency>
 
         <dependency>
@@ -67,8 +74,18 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_2.10</artifactId>
-            <version>2.0.0</version>
-            <scope>provided</scope>
+            <version>${spark.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-hive_2.10</artifactId>
+            <version>${spark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hive</groupId>
+            <artifactId>hive-jdbc</artifactId>
+            <version>${spark.version}</version>
         </dependency>
 
         <dependency>
@@ -76,6 +93,9 @@
             <artifactId>spark-connector_2.10</artifactId>
             <version>1.1.0</version>
         </dependency>
+
+
+
 
 
 
