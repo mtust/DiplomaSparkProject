@@ -7,8 +7,11 @@ import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
+
+import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, Vector => BV}
 
 /**
   * Created by tust on 02.09.2016.
@@ -178,19 +181,27 @@ object Main {
     val inputDataTrainWithR1 = trainDataWithOutput.filter { case (x, y) => moreThanHalf(x, y) }
       .map(_._1).map(s => Vectors.dense(s.toArray :+ 1.toDouble))
     val inputDataTrainWithR2 = trainDataWithOutput.filter { case (x, y) => lessThanHalf(x, y) }
-      .map(_._1).map(s => Vectors.dense(s.toArray :+ 0.toDouble)).repartition(1)
-
-    val inputDataTrainWithR1R = inputDataTrainWithR1.repartition(1)
-    val inputDataTrainWithR2R = inputDataTrainWithR2.repartition(1)
+      .map(_._1).map(s => Vectors.dense(s.toArray :+ 0.toDouble))
 
 
-    val testFromUse = normalizationSecondStepDataUse.repartition(1).zip(outputDataUse)
-      .map{case (input, output) => Vectors.dense(input.toArray ++ output.toArray)}
-//        inputDataTrainWithR1R.saveAsTextFile("trainClass1")
-//        inputDataTrainWithR2R.saveAsTextFile("trainClass2")
-    //    normalizationSecondStepDataUse.saveAsTextFile("use")
 
-//    testFromUse.saveAsTextFile("test")
+//
+//    val inputDataTrainWithR1R = inputDataTrainWithR1.repartition(1)
+//    val inputDataTrainWithR2R = inputDataTrainWithR2.repartition(1)
+//
+//
+//    val testFromUse = normalizationSecondStepDataUse.repartition(1).zip(outputDataUse)
+//      .map{case (input, output) => Vectors.dense(input.toArray ++ output.toArray)}
+
+
+
+//        inputDataTrainWithR1.saveAsTextFile("trainClass1")
+//        inputDataTrainWithR2.saveAsTextFile("trainClass2")
+//        normalizationSecondStepDataUse.saveAsTextFile("use")
+//
+//        testFromUse.saveAsTextFile("test")
+
+
 
 
 
@@ -199,10 +210,12 @@ object Main {
 //    val parseDataInputDataTrainWithR1R = inputDataTrainWithR1.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
 //    val parseDataNormalizationSecondStepDataUse = normalizationSecondStepDataUse.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
 
-    val tdr = trainDataWithOutput.map{ case (input, output) => Vectors.dense(input.toArray ++ output.toArray)}
-    val parseDataTrainWithOutput = tdr
-      .zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
-    val parseDataTestFromUse = testFromUse.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
+//    val tdr = trainDataWithOutput.map{ case (input, output) => Vectors.dense(input.toArray ++ output.toArray)}
+//    val parseDataTrainWithOutput = tdr
+//      .zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
+//    val parseDataTestFromUse = testFromUse.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
+
+
 //    val sparkSession =  SparkSession.builder().getOrCreate()
 //    val dataset = sparkSession.createDataset(parseData)
 
@@ -216,13 +229,14 @@ object Main {
 //    print(accuracy)
 
 
-
+//
 //    val spark = SparkSession
 //      .builder()
 //      .getOrCreate()
 //
 //    import spark.implicits._
-//
+
+
 //    // Apply the schema to the RDD
 //    val df = spark.sparkContext.textFile("test/part-00000").map(_.split(","))
 //      .toDF()
