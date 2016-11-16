@@ -202,71 +202,21 @@ object Main {
 //        testFromUse.saveAsTextFile("test")
 
 
+    val inputDataTrainWithLabaledPointR1 = trainDataWithOutput.filter { case (x, y) => moreThanHalf(x, y) }
+      .map(_._1).map(s => new LabeledPoint(1.toDouble, s))
+    val inputDataTrainWithLabaledPointR2 = trainDataWithOutput.filter { case (x, y) => lessThanHalf(x, y) }
+      .map(_._1).map(s => new LabeledPoint(0.toDouble, s))
 
 
-
-
-
-//    val parseDataInputDataTrainWithR1R = inputDataTrainWithR1.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
-//    val parseDataNormalizationSecondStepDataUse = normalizationSecondStepDataUse.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
-
-//    val tdr = trainDataWithOutput.map{ case (input, output) => Vectors.dense(input.toArray ++ output.toArray)}
-//    val parseDataTrainWithOutput = tdr
-//      .zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
-//    val parseDataTestFromUse = testFromUse.zipWithIndex().map { case (line, i) => LabeledPoint(i.toDouble,line) }
-
-
-//    val sparkSession =  SparkSession.builder().getOrCreate()
-//    val dataset = sparkSession.createDataset(parseData)
-
-    //   normalizationSecondStepData.foreach(println)
-
-//    val model = NaiveBayes.train(parseDataTrainWithOutput, lambda = 1.0, modelType = "multinomial")
-//    val predictionAndLabel = parseDataTestFromUse.map(p => (model.predict(p.features), p.label))
-//    val accuracy = 1.0 * predictionAndLabel.filter(x => x._1 == x._2).count() / parseDataTestFromUse.count()
+//    inputDataTrainWithLabaledPointR1.saveAsTextFile("inputDataTrainWithLabaledPointR1")
 //
-//
-//    print(accuracy)
+    val originalTrainData : RDD[LabeledPoint] = trainDataWithOutput.map{case (x, y) => new LabeledPoint(y.apply(0), x)}
+    val originalTestData : RDD[LabeledPoint] = normalizationSecondStepDataUse.repartition(1).zip(outputDataUse)
+      .map{case (input, output) => new LabeledPoint(output.apply(0), input)}
 
+    originalTestData.saveAsObjectFile("originalTrainData")
+    originalTestData.saveAsObjectFile("originalTestData")
 
-//
-//    val spark = SparkSession
-//      .builder()
-//      .getOrCreate()
-//
-//    import spark.implicits._
-
-
-//    // Apply the schema to the RDD
-//    val df = spark.sparkContext.textFile("test/part-00000").map(_.split(","))
-//      .toDF()
-//
-//    df.show()
-
-//    val layers = Array[Int](4, 5, 4, 3)
-//    // create the trainer and set its parameters
-//    val trainer = new MultilayerPerceptronClassifier()
-//      .setLayers(layers)
-//      .setBlockSize(128)
-//      .setSeed(1234L)
-//      .setMaxIter(100)
-//    // train the model
-//    val model = trainer.fit(df)
-//    // compute precision on the test set
-//    val result = model.transform(df)
-//    val predictionAndLabels = result.select("prediction", "label")
-//    val evaluator = new MulticlassClassificationEvaluator()
-//      .setMetricName("precision")
-//    println("Precision:" + evaluator.evaluate(predictionAndLabels))
-
-
-    // Save and load model
-
-
-    // println(groupedClusters.length);
-
-    // println(groupedClusters(0)._2);
-    // groupedClusters.foreach { println}
 
   }
 
